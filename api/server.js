@@ -31,11 +31,8 @@ const port = process.env.PORT || 5000;
 
 // Configuración de CORS
 app.use(cors({
-  origin: [
-    'https://recetas-faciles-eta.vercel.app',
-    'http://localhost:3000'
-  ],
-  credentials: true
+    origin: ["https://recetas-faciles-eta.vercel.app", "http://localhost:3000", "https://recetas-faciles-pbuwpweoo-massimolargers-projects.vercel.app"],
+    credentials: true
 }));
 
 app.use(express.json());
