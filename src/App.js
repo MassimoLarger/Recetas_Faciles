@@ -11,11 +11,16 @@ function App() {
   const [showSavedRecipes, setShowSavedRecipes] = useState(false);
   const [recipesLoading, setRecipesLoading] = useState(false);
 
+  // Configuración base de la API para desarrollo y producción
+  const API_BASE_URL = process.env.NODE_ENV === 'development' 
+    ? '' 
+    : 'https://recetas-faciles-eta.vercel.app';
+
   const fetchSavedRecipes = async () => {
     setRecipesLoading(true);
     setError(null);
     try {
-      const response = await fetch('/get-recipes');
+      const response = await fetch(`${API_BASE_URL}/api/get-recipes`);
       if (!response.ok) throw new Error('Error al cargar recetas');
       const data = await response.json();
       setSavedRecipes(data);
@@ -39,7 +44,7 @@ function App() {
     setRecipe(null);
 
     try {
-      const response = await fetch('/generate-recipe', {
+      const response = await fetch(`${API_BASE_URL}/api/generate-recipe`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -53,7 +58,7 @@ function App() {
 
       const data = await response.json();
       setRecipe(data);
-      fetchSavedRecipes(); // Actualizar la lista después de generar una nueva
+      fetchSavedRecipes();
     } catch (err) {
       setError('Failed to generate or save recipe: ' + err.message);
     } finally {

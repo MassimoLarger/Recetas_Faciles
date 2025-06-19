@@ -2,14 +2,15 @@ require('dotenv').config();
 const express = require('express');
 const admin = require('firebase-admin');
 const { getFirestore } = require('firebase-admin/firestore');
+const cors = require('cors');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// TODO: Replace with your Firebase project configuration
-// For security, consider loading this from environment variables or a secure configuration management system
+// Configuración de Firebase
 const serviceAccount = {
   type: process.env.FIREBASE_TYPE,
   project_id: process.env.FIREBASE_PROJECT_ID,
   private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-  private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+  private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n') || '',
   client_email: process.env.FIREBASE_CLIENT_EMAIL,
   client_id: process.env.FIREBASE_CLIENT_ID,
   auth_uri: process.env.FIREBASE_AUTH_URI,
@@ -22,109 +23,83 @@ const serviceAccount = {
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
+
 const app = express();
 const port = process.env.PORT || 5000;
 
-// Add OpenAI integration
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-
-// Access your API key as an environment variable (see "Set up your API key" above)
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// Configuración de CORS
+app.use(cors({
+  origin: [
+    'https://recetas-faciles-eta.vercel.app',
+    'http://localhost:3000'
+  ],
+  credentials: true
+}));
 
 app.use(express.json());
 
-app.get('/', (req, res) => {
-  res.send('Hello from the Node.js backend!');
+// Configuración de Gemini
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// Endpoints
+app.get('/api', (req, res) => {
+  res.send('API de Recetas Funcionando');
 });
 
-// Example API endpoint for recipe generation (placeholder)
-app.post('/generate-recipe', async (req, res) => {
-  let { ingredients, dietaryRestrictions, preferences } = req.body;
-
-  // Ensure ingredients is an array
-  if (typeof ingredients === 'string') {
-    ingredients = ingredients.split(',').map(item => item.trim()).filter(item => item.length > 0);
-  }
-  if (!Array.isArray(ingredients)) {
-    ingredients = [];
-  }
-
-  // Ensure dietaryRestrictions is an array
-  if (typeof dietaryRestrictions === 'string') {
-    dietaryRestrictions = dietaryRestrictions.split(',').map(item => item.trim()).filter(item => item.length > 0);
-  }
-  if (!Array.isArray(dietaryRestrictions)) {
-    dietaryRestrictions = [];
-  }
-
-  // Ensure preferences is a string (or handle as array if needed later)
-  if (typeof preferences !== 'string') {
-    preferences = '';
-  }
-
+app.post('/api/generate-recipe', async (req, res) => {
   try {
-    const prompt = `Genera una receta con los siguientes ingredientes: ${ingredients}. El formato debe ser:
+    let { ingredients, dietaryRestrictions, preferences } = req.body;
 
-    Título: [Título de la receta]
+    // Procesamiento de ingredientes
+    ingredients = typeof ingredients === 'string' 
+      ? ingredients.split(',').map(item => item.trim()).filter(item => item.length > 0)
+      : ingredients || [];
+
+    // Procesamiento de restricciones
+    dietaryRestrictions = typeof dietaryRestrictions === 'string'
+      ? dietaryRestrictions.split(',').map(item => item.trim()).filter(item => item.length > 0)
+      : dietaryRestrictions || [];
+
+    preferences = typeof preferences === 'string' ? preferences : '';
+
+    const prompt = `Genera una receta con: ${ingredients.join(', ')}. ${dietaryRestrictions.length ? 'Restricciones: ' + dietaryRestrictions.join(', ') : ''}. ${preferences ? 'Preferencias: ' + preferences : ''}. Formato:
+    Título: [Título]
     Ingredientes:
     * [Ingrediente 1]
     * [Ingrediente 2]
     Instrucciones:
-    1. **[Paso 1]**
-    2. **[Paso 2]**
-    ...
-    `;
+    1. [Paso 1]
+    2. [Paso 2]`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash"});
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const generatedText = response.text();
-    if (generatedText !== undefined && generatedText !== null && generatedText !== '') {
-      console.log("Respuesta de la IA generada");
-    }
-    
-    let title = "";
-    let ingredientsList = [];
-    let instructionsBuffer = [];
-    if (!generatedText) {
-      throw new Error('No se recibió contenido de la IA.');
-    }
 
+    // Procesamiento de la respuesta
     const lines = generatedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-    let recipeIngredients = [];
-    let instructions = 'No se pudieron extraer las instrucciones.';
-
+    let title = '';
+    let ingredientsList = [];
+    let instructions = [];
     let currentSection = '';
 
     for (const line of lines) {
-      if (line.startsWith('Título:') || line.startsWith('**Título:')) {
-        title = line.replace(/\*\*Título:\*\*\s*/, '').replace('Título:', '').trim();
+      if (line.match(/Título:|Título\s*:/i)) {
+        title = line.replace(/Título:\s*/i, '').trim();
         currentSection = 'title';
-      } else if (line.startsWith('Ingredientes:') || line.startsWith('**Ingredientes:')) {
+      } else if (line.match(/Ingredientes:|Ingredientes\s*:/i)) {
         currentSection = 'ingredients';
-      } else if (line.startsWith('Instrucciones:') || line.startsWith('**Instrucciones:')) {
+      } else if (line.match(/Instrucciones:|Instrucciones\s*:/i)) {
         currentSection = 'instructions';
       } else if (currentSection === 'ingredients' && line.startsWith('*')) {
-        ingredientsList.push(line.replace(/\*\s*/, '').trim());
-      } else if (currentSection === 'instructions' && line.length > 0) {
-        instructionsBuffer.push(line.trim());
+        ingredientsList.push(line.replace(/^\*\s*/, '').trim());
+      } else if (currentSection === 'instructions' && line.match(/^\d+\./)) {
+        instructions.push(line.replace(/^\d+\.\s*/, '').trim());
       }
-    } 
-
-    if (instructionsBuffer.length > 0) {
-      instructions = instructionsBuffer.join('\n');
-    } else {
-      instructions = "No se pudieron extraer las instrucciones.";
     }
 
-    res.json({
-      Nombre: title || 'Receta Generada',
-      Ingredientes: ingredientsList,
-      Instrucciones: instructions
-    });
-
+    // Guardar en Firestore
     const db = getFirestore();
-
     const counterRef = db.collection('contadores').doc('recetas');
     const counterDoc = await counterRef.get();
     let lastId = counterDoc.exists ? counterDoc.data().lastId : 0;
@@ -136,22 +111,22 @@ app.post('/generate-recipe', async (req, res) => {
     await recipeRef.set({
       Nombre: title || 'Receta Generada',
       Ingredientes: ingredientsList,
-      Instrucciones: instructions,
+      Instrucciones: instructions.join('\n'),
       id: lastId
-    })
-    .then(() => {
-      console.log("Receta enviada correctamente a Firestore");
-    })
-    .catch((error) => {
-      console.error("Error al enviar la receta:", error);
+    });
+
+    res.json({
+      Nombre: title || 'Receta Generada',
+      Ingredientes: ingredientsList,
+      Instrucciones: instructions.join('\n')
     });
   } catch (error) {
-    console.error('Error al generar la respuesta de la ia:', error);
-    res.status(500).json({ error: 'Error al generar la receta.' });
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Error al generar la receta' });
   }
 });
 
-app.get('/get-recipes', async (req, res) => {
+app.get('/api/get-recipes', async (req, res) => {
   try {
     const db = getFirestore();
     const snapshot = await db.collection('recetas').get();
@@ -165,16 +140,13 @@ app.get('/get-recipes', async (req, res) => {
     });
 
     recipes.sort((a, b) => b.id - a.id);
-
-    console.log("Recetas obtenidas correctamente");
-
     res.json(recipes);
   } catch (error) {
-    console.error('Error al obtener recetas:', error);
-    res.status(500).json({ error: 'Error al cargar recetas' });
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Error al obtener recetas' });
   }
 });
 
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  console.log(`Servidor corriendo en puerto ${port}`);
 });
