@@ -20,6 +20,8 @@ const serviceAccount = {
   universe_domain: process.env.FIREBASE_UNIVERSE_DOMAIN,
 }; 
 
+console.log('Firebase Service Account Private Key:', serviceAccount.private_key);
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
