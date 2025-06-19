@@ -47,59 +47,92 @@ app.get('/api', (req, res) => {
 });
 
 app.post('/api/generate-recipe', async (req, res) => {
+  let { ingredients, dietaryRestrictions, preferences } = req.body;
+
+  // Ensure ingredients is an array
+  if (typeof ingredients === 'string') {
+    ingredients = ingredients.split(',').map(item => item.trim()).filter(item => item.length > 0);
+  }
+  if (!Array.isArray(ingredients)) {
+    ingredients = [];
+  }
+
+  // Ensure dietaryRestrictions is an array
+  if (typeof dietaryRestrictions === 'string') {
+    dietaryRestrictions = dietaryRestrictions.split(',').map(item => item.trim()).filter(item => item.length > 0);
+  }
+  if (!Array.isArray(dietaryRestrictions)) {
+    dietaryRestrictions = [];
+  }
+
+  // Ensure preferences is a string (or handle as array if needed later)
+  if (typeof preferences !== 'string') {
+    preferences = '';
+  }
+
   try {
-    let { ingredients, dietaryRestrictions, preferences } = req.body;
+    const prompt = `Genera una receta con los siguientes ingredientes: ${ingredients}. El formato debe ser:
 
-    // Procesamiento de ingredientes
-    ingredients = typeof ingredients === 'string' 
-      ? ingredients.split(',').map(item => item.trim()).filter(item => item.length > 0)
-      : ingredients || [];
-
-    // Procesamiento de restricciones
-    dietaryRestrictions = typeof dietaryRestrictions === 'string'
-      ? dietaryRestrictions.split(',').map(item => item.trim()).filter(item => item.length > 0)
-      : dietaryRestrictions || [];
-
-    preferences = typeof preferences === 'string' ? preferences : '';
-
-    const prompt = `Genera una receta con: ${ingredients.join(', ')}. ${dietaryRestrictions.length ? 'Restricciones: ' + dietaryRestrictions.join(', ') : ''}. ${preferences ? 'Preferencias: ' + preferences : ''}. Formato:
-    Título: [Título]
+    Título: [Título de la receta]
     Ingredientes:
     * [Ingrediente 1]
     * [Ingrediente 2]
     Instrucciones:
-    1. [Paso 1]
-    2. [Paso 2]`;
+    1. **[Paso 1]**
+    2. **[Paso 2]**
+    ...
+    `;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash"});
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const generatedText = response.text();
-
-    // Procesamiento de la respuesta
-    const lines = generatedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-    let title = '';
+    if (generatedText !== undefined && generatedText !== null && generatedText !== '') {
+      console.log("Respuesta de la IA generada");
+    }
+    
+    let title = "";
     let ingredientsList = [];
-    let instructions = [];
+    let instructionsBuffer = [];
+    if (!generatedText) {
+      throw new Error('No se recibió contenido de la IA.');
+    }
+
+    const lines = generatedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    let recipeIngredients = [];
+    let instructions = 'No se pudieron extraer las instrucciones.';
+
     let currentSection = '';
 
     for (const line of lines) {
-      if (line.match(/Título:|Título\s*:/i)) {
-        title = line.replace(/Título:\s*/i, '').trim();
+      if (line.startsWith('Título:') || line.startsWith('**Título:')) {
+        title = line.replace(/\*\*Título:\*\*\s*/, '').replace('Título:', '').trim();
         currentSection = 'title';
-      } else if (line.match(/Ingredientes:|Ingredientes\s*:/i)) {
+      } else if (line.startsWith('Ingredientes:') || line.startsWith('**Ingredientes:')) {
         currentSection = 'ingredients';
-      } else if (line.match(/Instrucciones:|Instrucciones\s*:/i)) {
+      } else if (line.startsWith('Instrucciones:') || line.startsWith('**Instrucciones:')) {
         currentSection = 'instructions';
       } else if (currentSection === 'ingredients' && line.startsWith('*')) {
-        ingredientsList.push(line.replace(/^\*\s*/, '').trim());
-      } else if (currentSection === 'instructions' && line.match(/^\d+\./)) {
-        instructions.push(line.replace(/^\d+\.\s*/, '').trim());
+        ingredientsList.push(line.replace(/\*\s*/, '').trim());
+      } else if (currentSection === 'instructions' && line.length > 0) {
+        instructionsBuffer.push(line.trim());
       }
+    } 
+
+    if (instructionsBuffer.length > 0) {
+      instructions = instructionsBuffer.join('\n');
+    } else {
+      instructions = "No se pudieron extraer las instrucciones.";
     }
 
-    // Guardar en Firestore
+    res.json({
+      Nombre: title || 'Receta Generada',
+      Ingredientes: ingredientsList,
+      Instrucciones: instructions
+    });
+
     const db = getFirestore();
+
     const counterRef = db.collection('contadores').doc('recetas');
     const counterDoc = await counterRef.get();
     let lastId = counterDoc.exists ? counterDoc.data().lastId : 0;
@@ -111,18 +144,18 @@ app.post('/api/generate-recipe', async (req, res) => {
     await recipeRef.set({
       Nombre: title || 'Receta Generada',
       Ingredientes: ingredientsList,
-      Instrucciones: instructions.join('\n'),
+      Instrucciones: instructions,
       id: lastId
-    });
-
-    res.json({
-      Nombre: title || 'Receta Generada',
-      Ingredientes: ingredientsList,
-      Instrucciones: instructions.join('\n')
+    })
+    .then(() => {
+      console.log("Receta enviada correctamente a Firestore");
+    })
+    .catch((error) => {
+      console.error("Error al enviar la receta:", error);
     });
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: 'Error al generar la receta' });
+    console.error('Error al generar la respuesta de la ia:', error);
+    res.status(500).json({ error: 'Error al generar la receta.' });
   }
 });
 
@@ -140,10 +173,13 @@ app.get('/api/get-recipes', async (req, res) => {
     });
 
     recipes.sort((a, b) => b.id - a.id);
+
+    console.log("Recetas obtenidas correctamente");
+
     res.json(recipes);
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: 'Error al obtener recetas' });
+    console.error('Error al obtener recetas:', error);
+    res.status(500).json({ error: 'Error al cargar recetas' });
   }
 });
 
