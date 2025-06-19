@@ -6,12 +6,12 @@ import { initializeApp } from "firebase/app";
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyAdY4Q-PV0G3FV44gkRs57ZRZ6yweZ27RI",
-  authDomain: "recetas-con-lo-que-tengas.firebaseapp.com",
-  projectId: "recetas-con-lo-que-tengas",
-  storageBucket: "recetas-con-lo-que-tengas.firebasestorage.app",
-  messagingSenderId: "933458426959",
-  appId: "1:933458426959:web:713fafb8d825ec1fbc3e3a",
+  apiKey: process.env.FIREBASE_API_KEY,
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.FIREBASE_PROJECT_ID,
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.FIREBASE_APP_ID,
 };
 
 // Initialize Firebase
