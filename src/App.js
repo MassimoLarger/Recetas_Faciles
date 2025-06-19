@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 function App() {
   const [ingredients, setIngredients] = useState('');
@@ -16,7 +16,8 @@ function App() {
     ? '' 
     : 'https://recetas-faciles-eta.vercel.app';
 
-  const fetchSavedRecipes = async () => {
+  // Función memoizada con useCallback
+  const fetchSavedRecipes = useCallback(async () => {
     setRecipesLoading(true);
     setError(null);
     try {
@@ -29,13 +30,13 @@ function App() {
     } finally {
       setRecipesLoading(false);
     }
-  };
+  }, [API_BASE_URL]);
 
   useEffect(() => {
     if (showSavedRecipes) {
       fetchSavedRecipes();
     }
-  }, [showSavedRecipes]);
+  }, [showSavedRecipes, fetchSavedRecipes]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
