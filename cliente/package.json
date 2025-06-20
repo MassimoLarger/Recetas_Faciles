@@ -38,6 +38,6 @@
     "proxy": "http://localhost:10000",
     "homepage": ".",
     "engines": {
-      "node": "18.x" 
+      "node": ">=20.x" 
     }
   }
