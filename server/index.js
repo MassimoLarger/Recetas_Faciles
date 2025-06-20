@@ -38,7 +38,7 @@ const port = process.env.PORT || 5000;
 
 const corsOptions = {
   origin: [
-    'https://tu-frontend.vercel.app',
+    'https://recetas-faciles-eight.vercel.app',
     'http://localhost:3000' // para desarrollo
   ],
   optionsSuccessStatus: 200
