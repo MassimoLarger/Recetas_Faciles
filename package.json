@@ -1,30 +1,33 @@
 {
   "name": "recetas-fullstack",
   "version": "1.0.0",
+  "type": "module",
   "scripts": {
-    "client-install": "cd cliente && npm install",
-    "server-install": "cd server && npm install",
     "client-build": "cd cliente && npm run build",
-    "server-start": "cd server && npm start",
-    "start": "npm run server-start",
-    "build": "npm run client-install && npm run server-install && npm run client-build",
-    "dev": "concurrently \"cd cliente && npm start\" \"cd server && npm run dev\""
+    "server-start": "node server/index.js",
+    "start": "node server/index.js",
+    "build": "npm install && cd cliente && npm install && npm run build",
+    "dev": "concurrently \"cd cliente && npm start\" \"nodemon server/index.js\"",
+    "install-all": "npm install && cd cliente && npm install"
   },
   "dependencies": {
-    "concurrently": "^8.2.2",
-    "serve": "^14.2.1",
+    "express": "^4.18.2",
     "firebase-admin": "^11.0.0",
     "cors": "^2.8.5",
     "@google/generative-ai": "^0.1.0",
     "helmet": "^7.1.0",
     "express-rate-limit": "^7.1.3",
-    "express": "^4.18.2",
+    "concurrently": "^8.2.2",
+    "serve": "^14.2.1",
     "@tanstack/react-query": "^5.80.7",
     "firebase": "^11.9.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-scripts": "^5.0.1",
     "web-vitals": "^2.1.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
   },
   "engines": {
     "node": ">=20.x"
