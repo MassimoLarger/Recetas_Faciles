@@ -5,6 +5,14 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import cors from 'cors';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+
+// 1. Configura primero el limiter correctamente
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: 'Límite de peticiones excedido'
+});
 
 // ===== 🛡️ Configuración Inicial =====
 const app = express();
@@ -16,7 +24,7 @@ app.use(helmet());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-app.use('/api/');
+app.use('/api/', limiter);
 
 // ===== 🔐 Firebase Config =====
 const firebaseConfig = {
