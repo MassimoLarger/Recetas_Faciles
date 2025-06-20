@@ -1,51 +1,20 @@
 {
-  "name": "recetas",
-  "version": "0.1.0",
-  "private": true,
-  "dependencies": {
-    "@google/generative-ai": "^0.15.0",
-    "@tanstack/react-query": "^5.80.7",
-    "@testing-library/dom": "^10.4.0",
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^13.5.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "firebase": "^11.9.1",
-    "firebase-admin": "^12.2.0",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "react-scripts": "^5.0.1",
-    "web-vitals": "^2.1.4"
-  },
-  "devDependencies": {
-    "concurrently": "^9.1.2"
-  },
+  "name": "recetas-fullstack",
+  "version": "1.0.0",
   "scripts": {
-    "start": "concurrently \"node api/server.js\" \"npm run start-react\"",
-    "start-react": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "client-install": "cd cliente && npm install",
+    "server-install": "cd server && npm install",
+    "client-build": "cd cliente && npm run build",
+    "server-start": "cd server && npm start",
+    "start": "npm run server-start",
+    "build": "npm run client-install && npm run server-install && npm run client-build",
+    "dev": "concurrently \"cd cliente && npm start\" \"cd server && npm run dev\""
   },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
+  "dependencies": {
+    "concurrently": "^8.2.2",
+    "serve": "^14.2.1"
   },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  },
-  "proxy": "http://localhost:5000"
+  "engines": {
+    "node": "18.x"
+  }
 }
