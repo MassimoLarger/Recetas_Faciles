@@ -35,8 +35,16 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 // ===== 🛡️ Middlewares de Seguridad =====
+
+const corsOptions = {
+  origin: [
+    'https://tu-frontend.vercel.app',
+    'http://localhost:3000' // para desarrollo
+  ],
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
 app.use(helmet());
-app.use(cors());
 app.use(express.json());
 
 // Rate Limiter (100 requests por 15 minutos)

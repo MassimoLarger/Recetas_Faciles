@@ -12,7 +12,7 @@ function App() {
   const [recipesLoading, setRecipesLoading] = useState(false);
 
   // Configuración de la URL base de la API
-  const API_BASE_URL = window.location.origin; // Usa la misma URL del frontend
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || window.location.origin;
 
   const fetchSavedRecipes = useCallback(async () => {
     setRecipesLoading(true);
@@ -53,7 +53,7 @@ function App() {
         },
         body: JSON.stringify({ 
           ingredients: ingredients.split(',').map(i => i.trim()).filter(i => i),
-          dietaryRestrictions,
+          dietaryRestrictions: dietaryRestrictions ? dietaryRestrictions.split(',').map(i => i.trim()).filter(i => i) : [],
           preferences 
         }),
       });
@@ -125,20 +125,24 @@ function App() {
               {savedRecipes.map((recipe) => (
                 <div key={recipe.id} style={styles.recipeCard}>
                   <div style={styles.recipeHeader}>
-                    <h3 style={styles.recipeTitle}>{recipe.Nombre || 'Receta sin nombre'}</h3>
+                    <h3 style={styles.recipeTitle}>{recipe.title || 'Receta sin nombre'}</h3>
                   </div>
                   <div style={styles.recipeContent}>
                     <h4 style={styles.recipeSubtitle}>Ingredientes:</h4>
                     <ul style={styles.list}>
-                      {recipe.Ingredientes && recipe.Ingredientes.map((item, idx) => (
+                      {recipe.ingredients && recipe.ingredients.map((item, idx) => (
                         <li key={idx}>{item}</li>
                       ))}
                     </ul>
                     <h4 style={styles.recipeSubtitle}>Instrucciones:</h4>
                     <div style={styles.instructions}>
-                      {recipe.Instrucciones && recipe.Instrucciones.split('\n').map((paragraph, i) => (
-                        <p key={i}>{paragraph}</p>
+                      {recipe.instructions && recipe.instructions.map((step, i) => (
+                        <p key={i}>{i+1}. {step}</p>
                       ))}
+                    </div>
+                    <div style={styles.originalIngredients}>
+                      <h4 style={styles.recipeSubtitle}>Ingredientes originales:</h4>
+                      <p>{recipe.originalIngredients?.join(', ') || 'No disponible'}</p>
                     </div>
                   </div>
                 </div>
@@ -165,7 +169,7 @@ function App() {
             </div>
             <div style={styles.formGroup}>
               <label htmlFor="dietaryRestrictions" style={styles.label}>
-                Restricciones dietéticas (opcional):
+                Restricciones dietéticas (opcional, separadas por comas):
               </label>
               <input
                 type="text"
@@ -208,19 +212,25 @@ function App() {
 
           {recipe && (
             <div style={styles.recipeCard}>
-              <h2 style={styles.recipeTitle}>{recipe.Nombre}</h2>
+              <div style={styles.recipeHeader}>
+                <h2 style={styles.recipeTitle}>{recipe.title}</h2>
+              </div>
               <div style={styles.recipeContent}>
-                <h3 style={styles.subheading}>Ingredientes:</h3>
+                <h3 style={styles.recipeSubtitle}>Ingredientes:</h3>
                 <ul style={styles.list}>
-                  {recipe.Ingredientes && recipe.Ingredientes.map((item, index) => (
+                  {recipe.ingredients && recipe.ingredients.map((item, index) => (
                     <li key={index}>{item}</li>
                   ))}
                 </ul>
-                <h3 style={styles.subheading}>Instrucciones:</h3>
+                <h3 style={styles.recipeSubtitle}>Instrucciones:</h3>
                 <div style={styles.instructions}>
-                  {recipe.Instrucciones && recipe.Instrucciones.split('\n').map((paragraph, i) => (
-                    <p key={i}>{paragraph}</p>
+                  {recipe.instructions && recipe.instructions.map((step, i) => (
+                    <p key={i}>{i+1}. {step}</p>
                   ))}
+                </div>
+                <div style={styles.originalIngredients}>
+                  <h3 style={styles.recipeSubtitle}>Ingredientes originales:</h3>
+                  <p>{recipe.originalIngredients?.join(', ') || 'No disponible'}</p>
                 </div>
               </div>
             </div>
@@ -231,7 +241,7 @@ function App() {
   );
 }
 
-// Estilos (igual que en tu versión original)
+// Estilos actualizados
 const styles = {
   container: {
     fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
@@ -377,11 +387,9 @@ const styles = {
     overflow: 'hidden',
     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
     transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+    marginBottom: '30px',
   },
   recipeHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     backgroundColor: '#3498db',
     padding: '15px',
   },
@@ -408,7 +416,11 @@ const styles = {
   },
   instructions: {
     lineHeight: '1.6',
-    whiteSpace: 'pre-line',
+  },
+  originalIngredients: {
+    marginTop: '15px',
+    paddingTop: '15px',
+    borderTop: '1px solid #eee',
   },
   subheading: {
     color: '#34495e',
