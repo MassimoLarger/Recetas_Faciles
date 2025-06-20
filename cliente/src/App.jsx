@@ -209,25 +209,31 @@ function App() {
           {recipe && (
             <div style={styles.recipeCard}>
               <div style={styles.recipeHeader}>
-                <h2 style={styles.recipeTitle}>{recipe.title}</h2>
+                <h2 style={styles.recipeTitle}>{recipe.Nombre || recipe.title || 'Receta Generada'}</h2>
               </div>
               <div style={styles.recipeContent}>
                 <h3 style={styles.recipeSubtitle}>Ingredientes:</h3>
                 <ul style={styles.list}>
-                  {recipe.ingredients && recipe.ingredients.map((item, index) => (
+                  {(recipe.Ingredientes || recipe.ingredients || []).map((item, index) => (
                     <li key={index}>{item}</li>
                   ))}
                 </ul>
                 <h3 style={styles.recipeSubtitle}>Instrucciones:</h3>
                 <div style={styles.instructions}>
-                  {recipe.instructions && recipe.instructions.map((step, i) => (
-                    <p key={i}>{i+1}. {step}</p>
+                  {(typeof recipe.Instrucciones === 'string' ? 
+                    recipe.Instrucciones.split('\n') : 
+                    (recipe.instructions || [])).map((step, i) => (
+                    <p key={i}>{step}</p>
                   ))}
                 </div>
-                <div style={styles.originalIngredients}>
-                  <h3 style={styles.recipeSubtitle}>Ingredientes originales:</h3>
-                  <p>{recipe.originalIngredients?.join(', ') || 'No disponible'}</p>
-                </div>
+                {recipe.originalIngredients && (
+                  <div style={styles.originalIngredients}>
+                    <h3 style={styles.recipeSubtitle}>Ingredientes originales:</h3>
+                    <p>{Array.isArray(recipe.originalIngredients) ? 
+                        recipe.originalIngredients.join(', ') : 
+                        recipe.originalIngredients}</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
