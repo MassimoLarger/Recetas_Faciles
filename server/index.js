@@ -5,38 +5,33 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import cors from 'cors';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 
-// ===== 🛡️ Configuración de Seguridad Inicial =====
+// ===== 🛡️ Configuración Inicial =====
 const app = express();
+const PORT = process.env.PORT || 5000;
+const HOST = process.env.HOST || '0.0.0.0';
 
-// Middlewares esenciales
+// ===== 📝 Middlewares Mejorados =====
 app.use(helmet());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Rate Limiter (100 requests por 15 minutos)
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false
-});
-app.use(limiter);
+app.use('/api/');
 
-// ===== 🔐 Configuración Firebase =====
-admin.initializeApp({
+// ===== 🔐 Firebase Config =====
+const firebaseConfig = {
   credential: admin.credential.cert({
     projectId: process.env.FIREBASE_PROJECT_ID,
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
     privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
   }),
   databaseURL: process.env.FIREBASE_DATABASE_URL
-});
+};
 
+admin.initializeApp(firebaseConfig);
 const db = getFirestore();
 
-// ===== 🤖 Configuración Gemini AI =====
+// ===== 🤖 Gemini AI Config =====
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ 
   model: "gemini-2.0-flash",
@@ -46,7 +41,7 @@ const model = genAI.getGenerativeModel({
   }
 });
 
-// ===== 🌐 Configuración CORS Dinámica =====
+// ===== 🌐 CORS Dinámico Mejorado =====
 const allowedOrigins = [
   "https://recetas-faciles-eta.vercel.app",
   "http://localhost:3000",
@@ -54,168 +49,129 @@ const allowedOrigins = [
 ].filter(Boolean);
 
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Bloqueado por CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'OPTIONS'],
+  origin: allowedOrigins,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
 
-// ===== 📝 Funciones Auxiliares =====
-const parseGeneratedText = (text) => {
-  const result = {
-    title: 'Receta Generada',
-    ingredients: [],
-    instructions: []
-  };
+// ===== 🚀 Endpoints Mejorados =====
 
-  const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
-  let currentSection = null;
-
-  lines.forEach(line => {
-    if (line.match(/^(\*\*)?Título:/i)) {
-      result.title = line.replace(/^(\*\*)?Título:(\*\*)?/i, '').trim();
-      currentSection = null;
-    } 
-    else if (line.match(/^(\*\*)?Ingredientes:/i)) {
-      currentSection = 'ingredients';
-    } 
-    else if (line.match(/^(\*\*)?Instrucciones:/i)) {
-      currentSection = 'instructions';
-    }
-    else if (currentSection === 'ingredients' && line.match(/^[-*]\s/)) {
-      result.ingredients.push(line.replace(/^[-*]\s/, '').trim());
-    }
-    else if (currentSection === 'instructions' && line.match(/^\d+\./)) {
-      result.instructions.push(line.replace(/^\d+\.\s*/, '').trim());
-    }
-  });
-
-  return result;
-};
-
-// ===== 🚀 Endpoints =====
-
-// Health Check
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
-  });
+// Health Check mejorado
+app.get('/api/health', async (req, res) => {
+  try {
+    // Verifica conexión a Firestore
+    await db.collection('health').doc('check').get();
+    res.json({ 
+      status: 'healthy',
+      services: {
+        firestore: 'connected',
+        gemini: 'available'
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(503).json({ 
+      status: 'unhealthy',
+      error: 'Service unavailable',
+      details: error.message 
+    });
+  }
 });
 
-// Generar Receta
+// Generar Receta (con validación mejorada)
 app.post('/api/generate-recipe', async (req, res) => {
   try {
-    const { ingredients = [], dietaryRestrictions = [], preferences = '' } = req.body;
+    const { ingredients, dietaryRestrictions = [], preferences = '' } = req.body;
 
-    // Validación de entrada
-    const validatedIngredients = Array.isArray(ingredients) ? 
-      ingredients.filter(Boolean) : 
-      String(ingredients).split(',').map(item => item.trim()).filter(Boolean);
-
-    if (validatedIngredients.length === 0) {
-      return res.status(400).json({ error: 'Debes proporcionar ingredientes' });
+    // Validación mejorada
+    if (!ingredients || !Array.isArray(ingredients)) {
+      return res.status(400).json({ 
+        error: 'Formato inválido: ingredients debe ser un array',
+        example: { ingredients: ["pollo", "arroz"] }
+      });
     }
 
-    const prompt = `Genera una receta con: ${validatedIngredients.join(', ')}.\n\nFormato:
-    **Título:** [Nombre de la receta]
+    const prompt = `Genera una receta con: ${ingredients.join(', ')}.\n\nFormato:
+    **Título:** [Nombre]
     **Ingredientes:**
     - [Ingrediente 1]
     **Instrucciones:**
     1. [Paso 1]`;
 
     const result = await model.generateContent(prompt);
-    const text = result.response.text();
-    const recipeData = parseGeneratedText(text);
+    const recipeData = parseGeneratedText(result.response.text());
 
-    // Firestore Transaction
-    const newRecipe = await db.runTransaction(async (transaction) => {
-      const counterRef = db.collection('contadores').doc('recetas');
-      const counterDoc = await transaction.get(counterRef);
-      const newId = (counterDoc.data()?.lastId || 0) + 1;
-
-      const recipeRef = db.collection('recetas').doc(`receta${newId}`);
-      const recipeToSave = {
-        ...recipeData,
-        id: newId,
-        originalIngredients: validatedIngredients,
-        createdAt: FieldValue.serverTimestamp(),
-        likes: 0
-      };
-
-      transaction.set(recipeRef, recipeToSave);
-      transaction.update(counterRef, { lastId: newId });
-
-      return { id: newId, ...recipeToSave };
-    });
-
+    // Firestore Transaction mejorada
+    const newRecipe = await createRecipeInFirestore(recipeData, ingredients);
+    
     res.status(201).json(newRecipe);
   } catch (error) {
-    console.error('Error en generate-recipe:', error);
-    res.status(500).json({ 
-      error: 'Error al generar receta',
-      ...(process.env.NODE_ENV === 'development' && { details: error.message })
-    });
+    handleError(res, error, 'generate-recipe');
   }
 });
 
-// Obtener Recetas (con paginación)
-app.get('/api/recipes', async (req, res) => {
-  try {
-    const { limit = 10, lastId } = req.query;
-    const limitNum = Math.min(Number(limit), 50); // Máximo 50 por petición
+// ===== 🔄 Funciones Auxiliares =====
 
-    let query = db.collection('recetas')
-      .orderBy('createdAt', 'desc')
-      .limit(limitNum);
+async function createRecipeInFirestore(recipeData, ingredients) {
+  const batch = db.batch();
+  const counterRef = db.collection('counters').doc('recipes');
+  const recipeRef = db.collection('recipes').doc();
 
-    if (lastId) {
-      const lastDoc = await db.collection('recetas').doc(lastId).get();
-      if (lastDoc.exists) {
-        query = query.startAfter(lastDoc);
-      }
-    }
+  const newRecipe = {
+    ...recipeData,
+    id: recipeRef.id,
+    originalIngredients: ingredients,
+    createdAt: FieldValue.serverTimestamp(),
+    likes: 0,
+    status: 'published'
+  };
 
-    const snapshot = await query.get();
-    const recipes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  batch.set(recipeRef, newRecipe);
+  batch.update(counterRef, { count: FieldValue.increment(1) });
 
-    res.json({
-      data: recipes,
-      hasMore: recipes.length === limitNum,
-      lastId: recipes.length ? recipes[recipes.length - 1].id : null
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Error al obtener recetas' });
+  await batch.commit();
+  return { id: recipeRef.id, ...newRecipe };
+}
+
+function handleError(res, error, context) {
+  console.error(`[${new Date().toISOString()}] Error in ${context}:`, error);
+  
+  const statusCode = error.code === 'permission-denied' ? 403 : 500;
+  const response = {
+    error: 'Operation failed',
+    requestId: res.locals.requestId
+  };
+
+  if (process.env.NODE_ENV === 'development') {
+    response.details = {
+      message: error.message,
+      stack: error.stack
+    };
   }
-});
 
-// ===== ⚠️ Manejo de Errores =====
-app.use((req, res, next) => {
-  res.status(404).json({ error: 'Endpoint no encontrado' });
+  res.status(statusCode).json(response);
+}
+
+// ===== ⚠️ Manejo de Errores Global =====
+app.use((req, res) => {
+  res.status(404).json({ 
+    error: 'Endpoint no encontrado',
+    availableEndpoints: ['/api/health', '/api/generate-recipe', '/api/recipes']
+  });
 });
 
 app.use((err, req, res, next) => {
-  console.error('Error global:', err.stack);
-  res.status(500).json({ error: 'Error interno del servidor' });
+  handleError(res, err, 'global-error-handler');
 });
 
 // ===== 🚪 Inicio del Servidor =====
-const PORT = process.env.PORT || 5000;
-const HOST = process.env.HOST || '0.0.0.0';
-
 app.listen(PORT, HOST, () => {
-  console.log(`\n🟢 Servidor escuchando en http://${HOST}:${PORT}`);
-  console.log(`🔹 Entorno: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔹 Firebase Project: ${process.env.FIREBASE_PROJECT_ID}`);
-  console.log(`🔹 Orígenes permitidos: ${allowedOrigins.join(', ')}\n`);
-});
-
-process.on('unhandledRejection', (err) => {
-  console.error('Unhandled Rejection:', err);
+  console.log(`
+  🚀 Servidor listo en http://${HOST}:${PORT}
+  ⏱️  ${new Date().toLocaleString()}
+  🔹 Entorno: ${process.env.NODE_ENV || 'development'}
+  🔹 Firebase: ${process.env.FIREBASE_PROJECT_ID}
+  🔹 Orígenes permitidos: ${allowedOrigins.join(', ')}
+  `);
 });
