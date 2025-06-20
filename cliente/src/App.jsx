@@ -12,13 +12,13 @@ function App() {
   const [recipesLoading, setRecipesLoading] = useState(false);
 
   // Configuración de la URL base de la API
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+  const API_BASE_URL = "https://recetas-faciles.onrender.com";
 
   const fetchSavedRecipes = useCallback(async () => {
     setRecipesLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/recipes`);
+      const response = await fetch(`https://recetas-faciles.onrender.com/api/recipes`);
       if (!response.ok) throw new Error('Error al cargar recetas');
       const data = await response.json();
       setSavedRecipes(data);
@@ -46,7 +46,7 @@ function App() {
         throw new Error('Debes ingresar al menos un ingrediente');
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/generate-recipe`, {
+      const response = await fetch(`https://recetas-faciles.onrender.com/api/generate-recipe`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
