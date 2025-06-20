@@ -1,3 +1,9 @@
+### Backend
+https://recetas-faciles.onrender.com
+
+### Frontend
+https://recetas-faciles-eight.vercel.app/
+
 ## Instalación y Ejecución
 
 Para que la aplicación funcione correctamente, sigue los siguientes pasos:
@@ -33,3 +39,5 @@ npm start
 ```
 
 Esto iniciará tanto el servidor backend (Node.js) como la aplicación frontend (React). La aplicación React se abrirá automáticamente en tu navegador en `http://localhost:3000` y el servidor backend estará escuchando en `http://localhost:5000`.
+
+### Para casos puntuales es posible que la app en local deje de funcionar
