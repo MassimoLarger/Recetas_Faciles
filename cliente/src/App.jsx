@@ -125,24 +125,20 @@ function App() {
               {savedRecipes.map((recipe) => (
                 <div key={recipe.id} style={styles.recipeCard}>
                   <div style={styles.recipeHeader}>
-                    <h3 style={styles.recipeTitle}>{recipe.title || 'Receta sin nombre'}</h3>
+                    <h3 style={styles.recipeTitle}>{recipe.Nombre || 'Receta sin nombre'}</h3>
                   </div>
                   <div style={styles.recipeContent}>
                     <h4 style={styles.recipeSubtitle}>Ingredientes:</h4>
                     <ul style={styles.list}>
-                      {recipe.ingredients && recipe.ingredients.map((item, idx) => (
+                      {recipe.Ingredientes && recipe.Ingredientes.map((item, idx) => (
                         <li key={idx}>{item}</li>
                       ))}
                     </ul>
                     <h4 style={styles.recipeSubtitle}>Instrucciones:</h4>
                     <div style={styles.instructions}>
-                      {recipe.instructions && recipe.instructions.map((step, i) => (
-                        <p key={i}>{i+1}. {step}</p>
+                      {recipe.Instrucciones && recipe.Instrucciones.split('\n').map((paragraph, i) => (
+                        <p key={i}>{paragraph}</p>
                       ))}
-                    </div>
-                    <div style={styles.originalIngredients}>
-                      <h4 style={styles.recipeSubtitle}>Ingredientes originales:</h4>
-                      <p>{recipe.originalIngredients?.join(', ') || 'No disponible'}</p>
                     </div>
                   </div>
                 </div>
