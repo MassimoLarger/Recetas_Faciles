@@ -1,5 +1,5 @@
-require('dotenv').config();
-const express = require('express');
+import 'dotenv/config';
+import express from 'express';
 const admin = require('firebase-admin');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const cors = require('cors');
