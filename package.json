@@ -4,8 +4,9 @@
   "type": "module",
   "scripts": {
     "start": "node server/index.js",
-    "build": "npm install --include=dev && vite build",
-    "dev": "concurrently \"vite\" \"nodemon server/index.js\""
+    "build": "npm install && vite build",
+    "dev": "concurrently \"vite\" \"nodemon server/index.js\"",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@google/generative-ai": "^0.1.0",
