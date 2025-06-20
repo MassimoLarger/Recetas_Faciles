@@ -23,7 +23,7 @@
     "concurrently": "^9.1.2"
   },
   "scripts": {
-    "start": "node api/server.js",
+    "start": "concurrently \"node api/server.js\" \"npm run start-react\"",
     "start-react": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
