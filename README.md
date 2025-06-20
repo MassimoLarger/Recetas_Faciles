@@ -8,6 +8,10 @@ https://recetas-faciles-eight.vercel.app/
 
 Para que la aplicación funcione correctamente, sigue los siguientes pasos:
 
+### 0. Correr con los links.
+Primero ejecutar el backend, esperar un tiempo para que la carga este completa. En la barra añadir api/health para ver si esta funcionando.
+Segundo ejecutar el frontend un vez el paso anterior este completo.
+
 ### 1. Instalar dependencias
 
 Asegúrate de tener Node.js y npm instalados en tu sistema. Luego, navega hasta el directorio raíz del proyecto (`recetas`) e instala las dependencias:
