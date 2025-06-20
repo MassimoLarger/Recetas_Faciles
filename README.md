@@ -12,6 +12,10 @@ Para que la aplicación funcione correctamente, sigue los siguientes pasos:
 Primero ejecutar el backend, esperar un tiempo para que la carga este completa. En la barra añadir api/health para ver si esta funcionando.
 Segundo ejecutar el frontend un vez el paso anterior este completo.
 
+Es posible que la app no responda a la primera, si eso sucede cambiar entre la seccion de generar nueva receta y ver recetas guardadas, es muy posible que encuentre la que genero de las primeras. Si no recargue la pagina y vuelva a intentar generar una receta.
+
+### Para casos puntuales es posible que la app en local deje de funcionar
+
 ### 1. Instalar dependencias
 
 Asegúrate de tener Node.js y npm instalados en tu sistema. Luego, navega hasta el directorio raíz del proyecto (`recetas`) e instala las dependencias:
@@ -43,5 +47,3 @@ npm start
 ```
 
 Esto iniciará tanto el servidor backend (Node.js) como la aplicación frontend (React). La aplicación React se abrirá automáticamente en tu navegador en `http://localhost:3000` y el servidor backend estará escuchando en `http://localhost:5000`.
-
-### Para casos puntuales es posible que la app en local deje de funcionar
