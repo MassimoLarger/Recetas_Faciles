@@ -12,7 +12,7 @@ function App() {
   const [recipesLoading, setRecipesLoading] = useState(false);
 
   // Configuración de la URL base de la API
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || window.location.origin;
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
   const fetchSavedRecipes = useCallback(async () => {
     setRecipesLoading(true);
