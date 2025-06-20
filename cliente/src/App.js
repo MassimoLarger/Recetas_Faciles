@@ -11,17 +11,16 @@ function App() {
   const [showSavedRecipes, setShowSavedRecipes] = useState(false);
   const [recipesLoading, setRecipesLoading] = useState(false);
 
-  // Configuración base de la API para desarrollo y producción
+  // Configuración única para desarrollo y producción
   const API_BASE_URL = process.env.NODE_ENV === 'development' 
-    ? '' 
-    : 'https://recetas-faciles-eta.vercel.app';
+    ? 'http://localhost:3001/api'  // Backend local en puerto diferente
+    : '/api';  // Ruta relativa en producción (mismo dominio)
 
-  // Función memoizada con useCallback
   const fetchSavedRecipes = useCallback(async () => {
     setRecipesLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/get-recipes`);
+      const response = await fetch(`${API_BASE_URL}/get-recipes`);
       if (!response.ok) throw new Error('Error al cargar recetas');
       const data = await response.json();
       setSavedRecipes(data);
@@ -45,25 +44,53 @@ function App() {
     setRecipe(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/generate-recipe`, {
+      // Validación básica
+      if (!ingredients.trim()) {
+        throw new Error('Debes ingresar al menos un ingrediente');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/generate-recipe`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ ingredients, dietaryRestrictions, preferences }),
+        body: JSON.stringify({ 
+          ingredients, 
+          dietaryRestrictions, 
+          preferences 
+        }),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al generar la receta');
       }
 
       const data = await response.json();
       setRecipe(data);
+      // Actualizar la lista de recetas después de guardar
       fetchSavedRecipes();
     } catch (err) {
-      setError('Failed to generate or save recipe: ' + err.message);
+      setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteRecipe = async (id) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/delete-recipe/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al eliminar la receta');
+      }
+
+      // Actualizar la lista después de eliminar
+      fetchSavedRecipes();
+    } catch (err) {
+      setError(err.message);
     }
   };
 
@@ -92,21 +119,41 @@ function App() {
         </button>
       </div>
 
-      {error && <p style={styles.error}>{error}</p>}
+      {error && (
+        <div style={styles.errorContainer}>
+          <p style={styles.errorText}>{error}</p>
+          <button 
+            onClick={() => setError(null)} 
+            style={styles.errorCloseButton}
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {showSavedRecipes ? (
         <div style={styles.savedRecipesContainer}>
           <h2 style={styles.subheading}>Recetas Guardadas</h2>
           
           {recipesLoading ? (
-            <p>Cargando recetas...</p>
+            <div style={styles.loadingContainer}>
+              <p>Cargando recetas...</p>
+            </div>
           ) : savedRecipes.length === 0 ? (
-            <p>No hay recetas guardadas aún.</p>
+            <p style={styles.noRecipesText}>No hay recetas guardadas aún.</p>
           ) : (
             <div style={styles.recipesGrid}>
               {savedRecipes.map((recipe) => (
-                <div key={recipe.id} style={styles.recipeCard}>
-                  <h3 style={styles.recipeTitle}>{recipe.Nombre}</h3>
+                <div key={recipe._id || recipe.id} style={styles.recipeCard}>
+                  <div style={styles.recipeHeader}>
+                    <h3 style={styles.recipeTitle}>{recipe.Nombre}</h3>
+                    <button 
+                      onClick={() => handleDeleteRecipe(recipe._id || recipe.id)}
+                      style={styles.deleteButton}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
                   <div style={styles.recipeContent}>
                     <h4 style={styles.recipeSubtitle}>Ingredientes:</h4>
                     <ul style={styles.list}>
@@ -139,12 +186,13 @@ function App() {
                 value={ingredients}
                 onChange={(e) => setIngredients(e.target.value)}
                 style={styles.input}
+                placeholder="Ej: pollo, arroz, zanahorias"
                 required
               />
             </div>
             <div style={styles.formGroup}>
               <label htmlFor="dietaryRestrictions" style={styles.label}>
-                Restricciones dietéticas (ej. vegetariano, sin gluten):
+                Restricciones dietéticas (opcional):
               </label>
               <input
                 type="text"
@@ -152,11 +200,12 @@ function App() {
                 value={dietaryRestrictions}
                 onChange={(e) => setDietaryRestrictions(e.target.value)}
                 style={styles.input}
+                placeholder="Ej: vegetariano, sin gluten"
               />
             </div>
             <div style={styles.formGroup}>
               <label htmlFor="preferences" style={styles.label}>
-                Preferencias (ej. rápido, bajo en calorías):
+                Preferencias (opcional):
               </label>
               <input
                 type="text"
@@ -164,14 +213,23 @@ function App() {
                 value={preferences}
                 onChange={(e) => setPreferences(e.target.value)}
                 style={styles.input}
+                placeholder="Ej: rápido, bajo en calorías"
               />
             </div>
             <button 
               type="submit" 
               disabled={loading} 
-              style={styles.button}
+              style={{
+                ...styles.button,
+                ...(loading && styles.buttonLoading)
+              }}
             >
-              {loading ? 'Generando...' : 'Generar Receta'}
+              {loading ? (
+                <>
+                  <span style={styles.spinner}></span>
+                  Generando...
+                </>
+              ) : 'Generar Receta'}
             </button>
           </form>
 
@@ -202,18 +260,20 @@ function App() {
 
 const styles = {
   container: {
-    fontFamily: 'Arial, sans-serif',
+    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
     maxWidth: '1200px',
     margin: '0 auto',
     padding: '20px',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f9f9f9',
     minHeight: '100vh',
+    color: '#333',
   },
   heading: {
     textAlign: 'center',
     color: '#2c3e50',
     marginBottom: '30px',
     fontSize: '2.5rem',
+    fontWeight: '600',
   },
   tabContainer: {
     display: 'flex',
@@ -230,10 +290,12 @@ const styles = {
     cursor: 'pointer',
     fontSize: '1rem',
     transition: 'all 0.3s ease',
+    fontWeight: '500',
   },
   activeTab: {
     backgroundColor: '#3498db',
     fontWeight: 'bold',
+    boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
   },
   form: {
     backgroundColor: 'white',
@@ -250,6 +312,7 @@ const styles = {
     marginBottom: '8px',
     fontWeight: '600',
     color: '#34495e',
+    fontSize: '1rem',
   },
   input: {
     width: '100%',
@@ -258,6 +321,12 @@ const styles = {
     borderRadius: '4px',
     fontSize: '16px',
     boxSizing: 'border-box',
+    transition: 'border 0.3s',
+  },
+  'input:focus': {
+    borderColor: '#3498db',
+    outline: 'none',
+    boxShadow: '0 0 0 2px rgba(52,152,219,0.2)',
   },
   button: {
     width: '100%',
@@ -270,23 +339,61 @@ const styles = {
     cursor: 'pointer',
     transition: 'background-color 0.3s ease',
     marginTop: '10px',
+    fontWeight: '600',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '10px',
   },
-  'button:hover': {
+  buttonLoading: {
     backgroundColor: '#27ae60',
+    opacity: '0.8',
   },
-  error: {
-    color: '#e74c3c',
-    textAlign: 'center',
-    margin: '20px 0',
-    padding: '10px',
+  spinner: {
+    border: '3px solid rgba(255,255,255,0.3)',
+    borderRadius: '50%',
+    borderTop: '3px solid white',
+    width: '20px',
+    height: '20px',
+    animation: 'spin 1s linear infinite',
+  },
+  errorContainer: {
     backgroundColor: '#fadbd8',
+    color: '#e74c3c',
+    padding: '15px',
     borderRadius: '4px',
+    margin: '20px 0',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  errorText: {
+    margin: '0',
+    fontWeight: '500',
+  },
+  errorCloseButton: {
+    backgroundColor: 'transparent',
+    border: 'none',
+    color: '#e74c3c',
+    fontSize: '20px',
+    cursor: 'pointer',
+    padding: '0 5px',
   },
   savedRecipesContainer: {
     backgroundColor: 'white',
     padding: '25px',
     borderRadius: '8px',
     boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+  },
+  loadingContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    padding: '20px',
+  },
+  noRecipesText: {
+    textAlign: 'center',
+    color: '#7f8c8d',
+    fontSize: '1.1rem',
   },
   recipesGrid: {
     display: 'grid',
@@ -300,14 +407,37 @@ const styles = {
     borderRadius: '8px',
     overflow: 'hidden',
     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-    transition: 'transform 0.3s ease',
+    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+  },
+  'recipeCard:hover': {
+    transform: 'translateY(-5px)',
+    boxShadow: '0 5px 15px rgba(0,0,0,0.1)',
+  },
+  recipeHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#3498db',
+    padding: '15px',
   },
   recipeTitle: {
-    backgroundColor: '#3498db',
     color: 'white',
-    padding: '15px',
-    margin: 0,
+    margin: '0',
     fontSize: '1.4rem',
+    fontWeight: '600',
+  },
+  deleteButton: {
+    backgroundColor: '#e74c3c',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    padding: '5px 10px',
+    cursor: 'pointer',
+    fontSize: '0.9rem',
+    transition: 'background-color 0.2s',
+  },
+  'deleteButton:hover': {
+    backgroundColor: '#c0392b',
   },
   recipeContent: {
     padding: '20px',
@@ -317,6 +447,7 @@ const styles = {
     marginTop: '15px',
     marginBottom: '10px',
     fontSize: '1.1rem',
+    fontWeight: '600',
   },
   list: {
     paddingLeft: '20px',
@@ -332,6 +463,7 @@ const styles = {
     marginTop: '20px',
     marginBottom: '10px',
     fontSize: '1.2rem',
+    fontWeight: '600',
   },
 };
 

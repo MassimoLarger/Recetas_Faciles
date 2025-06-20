@@ -1,0 +1,13 @@
+# dependencies
+/node_modules
+/.vercel
+
+# Environment variables
+.env
+
+# Firebase files
+**/firebase-adminsdk-*.json
+**/*serviceAccount.json
+**/firebase-config*.json
+recetas-con-lo-que-tengas-firebase-adminsdk-fbsvc-3101b7e847.json
+.vercel

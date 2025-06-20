@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: recetas-fullstack
+    runtime: node
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 18.x
+      - key: PORT
+        value: 10000
+      # Variables de Firebase y Google AI:
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        value: /opt/render/.gcloud/key.json
+      - key: FIREBASE_CONFIG
+        fromFile: ./firebase-config.json
