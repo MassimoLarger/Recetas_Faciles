@@ -1,11 +1,11 @@
 import 'dotenv/config';
 import express from 'express';
-const admin = require('firebase-admin');
-const { getFirestore, FieldValue } = require('firebase-admin/firestore');
-const cors = require('cors');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
+import admin from 'firebase-admin';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import cors from 'cors';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 
 // ===== 🛡️ Configuración de Seguridad Inicial =====
 const app = express();
