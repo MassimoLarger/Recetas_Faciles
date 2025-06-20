@@ -11,16 +11,14 @@ function App() {
   const [showSavedRecipes, setShowSavedRecipes] = useState(false);
   const [recipesLoading, setRecipesLoading] = useState(false);
 
-  // Configuración única para desarrollo y producción
-  const API_BASE_URL = process.env.NODE_ENV === 'development' 
-    ? 'http://localhost:3001/api'  // Backend local en puerto diferente
-    : '/api';  // Ruta relativa en producción (mismo dominio)
+  // Configuración de la URL base de la API
+  const API_BASE_URL = window.location.origin; // Usa la misma URL del frontend
 
   const fetchSavedRecipes = useCallback(async () => {
     setRecipesLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/get-recipes`);
+      const response = await fetch(`${API_BASE_URL}/api/recipes`);
       if (!response.ok) throw new Error('Error al cargar recetas');
       const data = await response.json();
       setSavedRecipes(data);
@@ -44,53 +42,34 @@ function App() {
     setRecipe(null);
 
     try {
-      // Validación básica
       if (!ingredients.trim()) {
         throw new Error('Debes ingresar al menos un ingrediente');
       }
 
-      const response = await fetch(`${API_BASE_URL}/generate-recipe`, {
+      const response = await fetch(`${API_BASE_URL}/api/generate-recipe`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          ingredients, 
-          dietaryRestrictions, 
+          ingredients: ingredients.split(',').map(i => i.trim()).filter(i => i),
+          dietaryRestrictions,
           preferences 
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Error al generar la receta');
+        throw new Error(errorData.error || 'Error al generar la receta');
       }
 
       const data = await response.json();
       setRecipe(data);
-      // Actualizar la lista de recetas después de guardar
       fetchSavedRecipes();
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDeleteRecipe = async (id) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/delete-recipe/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Error al eliminar la receta');
-      }
-
-      // Actualizar la lista después de eliminar
-      fetchSavedRecipes();
-    } catch (err) {
-      setError(err.message);
     }
   };
 
@@ -144,26 +123,20 @@ function App() {
           ) : (
             <div style={styles.recipesGrid}>
               {savedRecipes.map((recipe) => (
-                <div key={recipe._id || recipe.id} style={styles.recipeCard}>
+                <div key={recipe.id} style={styles.recipeCard}>
                   <div style={styles.recipeHeader}>
-                    <h3 style={styles.recipeTitle}>{recipe.Nombre}</h3>
-                    <button 
-                      onClick={() => handleDeleteRecipe(recipe._id || recipe.id)}
-                      style={styles.deleteButton}
-                    >
-                      Eliminar
-                    </button>
+                    <h3 style={styles.recipeTitle}>{recipe.Nombre || 'Receta sin nombre'}</h3>
                   </div>
                   <div style={styles.recipeContent}>
                     <h4 style={styles.recipeSubtitle}>Ingredientes:</h4>
                     <ul style={styles.list}>
-                      {recipe.Ingredientes.map((item, idx) => (
+                      {recipe.Ingredientes && recipe.Ingredientes.map((item, idx) => (
                         <li key={idx}>{item}</li>
                       ))}
                     </ul>
                     <h4 style={styles.recipeSubtitle}>Instrucciones:</h4>
                     <div style={styles.instructions}>
-                      {recipe.Instrucciones.split('\n').map((paragraph, i) => (
+                      {recipe.Instrucciones && recipe.Instrucciones.split('\n').map((paragraph, i) => (
                         <p key={i}>{paragraph}</p>
                       ))}
                     </div>
@@ -239,13 +212,13 @@ function App() {
               <div style={styles.recipeContent}>
                 <h3 style={styles.subheading}>Ingredientes:</h3>
                 <ul style={styles.list}>
-                  {recipe.Ingredientes.map((item, index) => (
+                  {recipe.Ingredientes && recipe.Ingredientes.map((item, index) => (
                     <li key={index}>{item}</li>
                   ))}
                 </ul>
                 <h3 style={styles.subheading}>Instrucciones:</h3>
                 <div style={styles.instructions}>
-                  {recipe.Instrucciones.split('\n').map((paragraph, i) => (
+                  {recipe.Instrucciones && recipe.Instrucciones.split('\n').map((paragraph, i) => (
                     <p key={i}>{paragraph}</p>
                   ))}
                 </div>
@@ -258,6 +231,7 @@ function App() {
   );
 }
 
+// Estilos (igual que en tu versión original)
 const styles = {
   container: {
     fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
@@ -322,11 +296,6 @@ const styles = {
     fontSize: '16px',
     boxSizing: 'border-box',
     transition: 'border 0.3s',
-  },
-  'input:focus': {
-    borderColor: '#3498db',
-    outline: 'none',
-    boxShadow: '0 0 0 2px rgba(52,152,219,0.2)',
   },
   button: {
     width: '100%',
@@ -409,10 +378,6 @@ const styles = {
     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
     transition: 'transform 0.3s ease, box-shadow 0.3s ease',
   },
-  'recipeCard:hover': {
-    transform: 'translateY(-5px)',
-    boxShadow: '0 5px 15px rgba(0,0,0,0.1)',
-  },
   recipeHeader: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -425,19 +390,6 @@ const styles = {
     margin: '0',
     fontSize: '1.4rem',
     fontWeight: '600',
-  },
-  deleteButton: {
-    backgroundColor: '#e74c3c',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    padding: '5px 10px',
-    cursor: 'pointer',
-    fontSize: '0.9rem',
-    transition: 'background-color 0.2s',
-  },
-  'deleteButton:hover': {
-    backgroundColor: '#c0392b',
   },
   recipeContent: {
     padding: '20px',
