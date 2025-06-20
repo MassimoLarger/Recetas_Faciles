@@ -3,12 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "client-build": "cd cliente && npm run build",
-    "server-start": "node server/index.js",
     "start": "node server/index.js",
-    "build": "npm install && cd cliente && npm install && npm run build",
-    "dev": "concurrently \"cd cliente && npm start\" \"nodemon server/index.js\"",
-    "install-all": "npm install && cd cliente && npm install"
+    "build": "npm ci && npm run build",
+    "dev": "concurrently \"cd cliente && npm start\" \"nodemon server/index.js\""
   },
   "dependencies": {
     "express": "^4.18.2",
