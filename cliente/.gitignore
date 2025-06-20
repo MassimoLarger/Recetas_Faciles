@@ -1,7 +1,7 @@
 # dependencies
 /node_modules
 /.vercel
-
+node_modules/
 # Environment variables
 .env
 
